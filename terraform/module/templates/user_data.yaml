@@ -1,0 +1,33 @@
+# cloud-config
+apt_update: true
+
+packages:
+  - openjdk-8-jre-headless
+  - curl
+  - screen
+  - bash
+  - grep
+
+users:
+  - default
+  - name: minecraft
+    gecos: Minecraft
+    homedir: /opt/minecraft
+write_files:
+  - path: /etc/systemd/system/minecraft@.service
+    content: |
+      ${base64encode(file("${path.module}/scripts/minecraft@.service"))}
+    encoding: b64
+    owner: minecraft:minecraft
+    permissions: '0750'
+
+# TODO
+# - enable minecraftd service (systemctl)
+runcmd:
+  - yum -y update
+  - mkdir -p /opt/minecraft
+  - chown minecraft:minecraft /opt/minecraft
+  - mkdir -p /opt/minecraft/server
+  - aws s3 cp s3://${s3_bucket}/server /opt/minecraft/server --recursive
+  - systemctl enable minecraft@server
+  - systemctl start minecraft@server
