@@ -98,11 +98,21 @@ resource "aws_autoscaling_schedule" "weekends_on" {
   autoscaling_group_name = "${aws_autoscaling_group.server_cluster.name}"
 }
 
-resource "aws_lb" "load_balancer" {
-  name               = "${var.project_name}-nlb"
-  load_balancer_type = "network"
+resource "aws_elb" "load_balancer" {
+  name               = "${var.project_name}-elb"
+  security_groups = [
+    "sg-03a223cdddca7909d",
+    "sg-0d0507ed4257e1fb9",
+  ]
   subnets            = ["${aws_subnet.selected}"]
   internal           = false
 
-  # access_logs {}
+  # health_check {}
+
+  listener {
+    lb_port = "25565"
+    lb_protocol = "tcp"
+    instance_port = "25565"
+    instance_protocol = "tcp"
+  }
 }
