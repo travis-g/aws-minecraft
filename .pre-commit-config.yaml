@@ -1,0 +1,12 @@
+- repo: git://github.com/antonbabenko/pre-commit-terraform
+  rev: v1.7.3
+  hooks:
+    - id: terraform_fmt
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.0.0  # Use the ref you want to point at
+  hooks:
+  - id: detect-aws-credentials
+# - repo: git://github.com/travis-g/pre-commit-hclfmt
+#   sha: HEAD
+#   hooks:
+#     - id: hclfmt
