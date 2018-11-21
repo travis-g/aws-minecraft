@@ -34,8 +34,13 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 
+variable "use_spot_instances" {
+  description = "Option to use Spot instances"
+  default     = false
+}
+
 variable "spot_price" {
-  description = "Bid for spot instances"
+  description = "Maximum bid for spot instances"
 }
 
 variable "s3_bucket" {

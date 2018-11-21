@@ -1,3 +1,5 @@
+# --- IAM policy resources
+
 data "aws_iam_policy_document" "minecraft-s3-bucket-rw_document" {
   statement {
     sid = "ListS3"

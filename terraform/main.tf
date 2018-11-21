@@ -22,7 +22,8 @@ module "minecraft_btw" {
 
   s3_bucket = "${var.s3_bucket}"
 
-  spot_price = "${var.spot_price}"
+  use_spot_instances = "${var.use_spot_instances}"
+  spot_price         = "${var.spot_price}"
 
   project_name   = "${var.project_name}"
   component_name = "${var.component_name}"

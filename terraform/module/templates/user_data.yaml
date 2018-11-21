@@ -51,8 +51,6 @@ write_files:
     owner: ec2-user:ec2-user
     permissions: '0750'
 
-# TODO
-# - enable minecraftd service (systemctl)
 runcmd:
   - yum -y update
   - mkdir -p /opt/minecraft/server

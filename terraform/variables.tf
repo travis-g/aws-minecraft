@@ -35,6 +35,11 @@ variable "instance_type" {
   default     = "t3.large"
 }
 
+variable "use_spot_instances" {
+  description = "Option to use Spot instances"
+  default     = false
+}
+
 variable "spot_price" {
   description = "Bid for spot instances"
 }

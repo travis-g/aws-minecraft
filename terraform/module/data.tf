@@ -1,3 +1,5 @@
+# --- Templates and seed data
+
 data "aws_ami" "minecraft" {
   most_recent = true
 
