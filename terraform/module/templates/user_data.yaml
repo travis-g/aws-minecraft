@@ -9,7 +9,7 @@ packages:
   - grep
 
 write_files:
-  - path: /etc/systemd/system/minecraft@.service
+  - path: /etc/systemd/system/minecraftd@.service
     content: |
       [Unit]
       Description=Minecraft Server %i
@@ -54,7 +54,7 @@ write_files:
 runcmd:
   - yum -y update
   - mkdir -p /opt/minecraft/server
-  - aws s3 cp s3://${s3_bucket}/server /opt/minecraft/server --recursive
+  - aws s3 cp s3://${s3_bucket_name}/server /opt/minecraft/server --recursive
   - chown -R ec2-user:ec2-user /opt/minecraft
-  - systemctl enable minecraft@server
-  - systemctl start minecraft@server
+  - systemctl enable minecraftd@server
+  - systemctl start minecraftd@server

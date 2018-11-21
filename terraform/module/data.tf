@@ -17,11 +17,11 @@ data "aws_ami" "minecraft" {
   owners = ["137112412989"]
 }
 
-data "template_file" "init" {
+data "template_file" "minecraftd_init" {
   template = "${file("${path.module}/templates/user_data.yaml")}"
 
   vars {
-    s3_bucket = "${var.s3_bucket}"
+    s3_bucket = "${var.s3_bucket_name}"
 
     // key_id = "${var.key_id}"
   }

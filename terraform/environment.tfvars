@@ -8,7 +8,7 @@ project_name = "minecraft"
 
 component_name = "btw-asg"
 
-s3_bucket = "minecraft-btw"
+s3_bucket_name = "minecraft-btw"
 
 // instance_type= "m3.large"
 instance_type = "t2.micro"

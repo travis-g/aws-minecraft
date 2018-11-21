@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "${var.aws_region}"
+  region = "${var.region}"
 }
 
 resource "aws_launch_configuration" "lc" {
@@ -17,7 +17,7 @@ resource "aws_launch_configuration" "lc" {
     "sg-0d0507ed4257e1fb9",
   ]
   key_name  = "minecraft-ssh"
-  user_data = "${data.template_file.init.rendered}"
+  user_data = "${data.template_file.minecraftd_init.rendered}"
   lifecycle {
     create_before_destroy = true
   }
@@ -28,11 +28,12 @@ data "aws_subnet" "selected" {
   id = "subnet-119ad61e"
 }
 
-resource "aws_autoscaling_group" "servers" {
+resource "aws_autoscaling_group" "server_cluster" {
   name                 = "${var.project_name}-${var.component_name}"
   launch_configuration = "${aws_launch_configuration.lc.name}"
 
   vpc_zone_identifier = ["${var.subnet_id}"]
+  load_balancers      = ["${aws_lb.load_balancer.name}"]
 
   desired_capacity = 1
   min_size         = 0
@@ -72,7 +73,7 @@ resource "aws_autoscaling_schedule" "weeknights_on" {
   min_size               = 0
   max_size               = 1
   desired_capacity       = 1
-  autoscaling_group_name = "${aws_autoscaling_group.servers.name}"
+  autoscaling_group_name = "${aws_autoscaling_group.server_cluster.name}"
 }
 
 resource "aws_autoscaling_schedule" "weekdays_off" {
@@ -83,7 +84,7 @@ resource "aws_autoscaling_schedule" "weekdays_off" {
   min_size               = 0
   max_size               = 1
   desired_capacity       = 0
-  autoscaling_group_name = "${aws_autoscaling_group.servers.name}"
+  autoscaling_group_name = "${aws_autoscaling_group.server_cluster.name}"
 }
 
 resource "aws_autoscaling_schedule" "weekends_on" {
@@ -94,5 +95,14 @@ resource "aws_autoscaling_schedule" "weekends_on" {
   min_size               = 0
   max_size               = 1
   desired_capacity       = 1
-  autoscaling_group_name = "${aws_autoscaling_group.servers.name}"
+  autoscaling_group_name = "${aws_autoscaling_group.server_cluster.name}"
+}
+
+resource "aws_lb" "load_balancer" {
+  name               = "${var.project_name}-nlb"
+  load_balancer_type = "network"
+  subnets            = ["${aws_subnet.selected}"]
+  internal           = false
+
+  # access_logs {}
 }

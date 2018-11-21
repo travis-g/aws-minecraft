@@ -20,7 +20,7 @@ module "minecraft_btw" {
   ami_id        = "${var.ami_id}"
   instance_type = "${var.instance_type}"
 
-  s3_bucket = "${var.s3_bucket}"
+  s3_bucket = "${var.s3_bucket_name}"
 
   use_spot_instances = "${var.use_spot_instances}"
   spot_price         = "${var.spot_price}"

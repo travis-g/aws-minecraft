@@ -1,6 +1,6 @@
 # --- global AWS variables
 
-variable "aws_region" {
+variable "region" {
   description = "AWS region in which to provision"
   default     = "us-east-1"
 }
@@ -9,11 +9,16 @@ variable "vpc_id" {
   description = "ID of the AWS VPC to provision inside"
 }
 
-variable "subnet_id" {
-  description = "Target subnet. Desired spot instance type must be available in the subnet's AZ"
+variable "subnet_ids" {
+  type = "list"
+  description = "Target subnets. Desired spot instance type must be available in the subnets AZs"
 }
 
 # --- Metadata
+
+variable "unique_prefix" {
+  description = "Unique prefix given to all resources"
+}
 
 variable "project_name" {
   description = "Slugified name of the infrastructure's overall project"
@@ -43,6 +48,6 @@ variable "spot_price" {
   description = "Maximum bid for spot instances"
 }
 
-variable "s3_bucket" {
+variable "s3_bucket_name" {
   description = "S3 bucket where related files will be exported"
 }

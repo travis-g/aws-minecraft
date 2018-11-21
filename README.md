@@ -15,8 +15,11 @@
 
 ## Configuration
 
-- Pre-seed S3 with the desired server JAR:
+- Create the S3 bucket
+- Pre-seed S3 with the desired server JAR and any configuration files:
 
   ```sh
   aws s3 cp server.jar s3://${var.s3_bucket}/server/server.jar
+  aws s3 cp ops.txt    s3://${var.s3_bucket}/server/ops.txt
+  # ...
   ```
