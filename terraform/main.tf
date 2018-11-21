@@ -1,26 +1,26 @@
-# terraform {
-#   backend "s3" {
-#     bucket  = "aws-minecraft-btw-terraform-state"
-#     region  = "us-east-1"
-#     encrypt = true
-#     acl     = "private"
-#     profile = "${var.aws_profile}"
-#   }
-# }
-
-provider "aws" {
-  profile = "${var.aws_profile}"
-  region  = "${var.aws_region}"
+terraform {
+  backend "s3" {
+    bucket  = "tjg-terraform-state"
+    region  = "us-east-1"
+    encrypt = true
+    acl     = "private"
+    key     = "minecraft-btw-tfstate"
+  }
 }
 
-module "minecraft_aws" {
-  source           = "module"
-  aws_profile      = "${var.aws_profile}"
-  aws_region       = "${var.aws_region}"
-  vpc_id           = "${var.vpc_id}"
-  ami_version      = "${var.ami_version}"
-  instance_type    = "${var.instance_type}"
-  instance_profile = "${var.instance_profile}"
+provider "aws" {
+  region = "${var.aws_region}"
+}
+
+module "minecraft_btw" {
+  source        = "module"
+  aws_region    = "${var.aws_region}"
+  vpc_id        = "${var.vpc_id}"
+  subnet_id     = "${var.subnet_id}"
+  ami_id        = "${var.ami_id}"
+  instance_type = "${var.instance_type}"
+
+  s3_bucket = "${var.s3_bucket}"
 
   spot_price = "${var.spot_price}"
 

@@ -2,14 +2,15 @@
 
 variable "aws_region" {
   description = "AWS region in which to provision"
-}
-
-variable "aws_profile" {
-  description = "AWS IAM profile to use when provisioning"
+  default     = "us-east-1"
 }
 
 variable "vpc_id" {
   description = "ID of the AWS VPC to provision inside"
+}
+
+variable "subnet_id" {
+  description = "Target subnet. Desired spot instance type must be available in the subnet's AZ"
 }
 
 # --- Metadata
@@ -17,19 +18,20 @@ variable "vpc_id" {
 variable "project_name" {
   description = "Slugified name of the infrastructure's overall project"
 }
+
 variable "component_name" {
   description = "Slugified name of what this code creates"
 }
 
 # --- EC2 Variables
 
-variable "instance_type" {
-  description = "EC2 instance type to use"
-  default = "t2.micro"
+variable "ami_id" {
+  description = "ID of AMI to use for instances"
 }
 
-variable "instance_profile" {
-  description = "EC2 IAM instance profile"
+variable "instance_type" {
+  description = "EC2 instance type to use"
+  default     = "t2.micro"
 }
 
 variable "spot_price" {
