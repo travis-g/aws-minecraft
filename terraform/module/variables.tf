@@ -10,8 +10,13 @@ variable "vpc_id" {
 }
 
 variable "subnet_ids" {
-  type = "list"
+  type        = "list"
   description = "Target subnets. Desired spot instance type must be available in the subnets AZs"
+}
+
+variable "availability_zones" {
+  type        = "list"
+  description = "Acceptable availability zones"
 }
 
 # --- Metadata
@@ -26,6 +31,10 @@ variable "project_name" {
 
 variable "component_name" {
   description = "Slugified name of what this code creates"
+}
+
+variable "role_name" {
+  description = "Component role name"
 }
 
 # --- EC2 Variables
@@ -51,3 +60,10 @@ variable "spot_price" {
 variable "s3_bucket_name" {
   description = "S3 bucket where related files will be exported"
 }
+
+variable "key_name" {
+  description = "Name of the SSH key to use"
+}
+
+# --- Tagging
+

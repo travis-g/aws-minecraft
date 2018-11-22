@@ -13,20 +13,24 @@ provider "aws" {
 }
 
 module "minecraft_btw" {
-  source        = "module"
-  aws_region    = "${var.aws_region}"
-  vpc_id        = "${var.vpc_id}"
-  subnet_id     = "${var.subnet_id}"
-  ami_id        = "${var.ami_id}"
-  instance_type = "${var.instance_type}"
+  source             = "module"
+  region             = "${var.aws_region}"
+  vpc_id             = "${var.vpc_id}"
+  subnet_ids         = "${var.subnet_ids}"
+  ami_id             = "${var.ami_id}"
+  instance_type      = "${var.instance_type}"
+  availability_zones = ["${var.availability_zones}"]
+  key_name           = "${var.key_name}"
 
-  s3_bucket = "${var.s3_bucket_name}"
+  s3_bucket_name = "${var.s3_bucket_name}"
 
   use_spot_instances = "${var.use_spot_instances}"
   spot_price         = "${var.spot_price}"
 
+  unique_prefix  = "${var.unique_prefix}"
   project_name   = "${var.project_name}"
   component_name = "${var.component_name}"
+  role_name      = "${var.role_name}"
 
   providers = {
     aws = "aws"

@@ -1,12 +1,11 @@
 #cloud-config
+output:
+  all: '| tee -a /var/log/cloud-init-output.log'
 apt_update: true
 
 packages:
   - java-1.8.0-openjdk-headless
-  - curl
-  - screen
-  - bash
-  - grep
+  - jq
 
 write_files:
   - path: /etc/systemd/system/minecraftd@.service
@@ -14,6 +13,7 @@ write_files:
       [Unit]
       Description=Minecraft Server %i
       After=network.target
+      Requires=network.target
 
       [Service]
       WorkingDirectory=/opt/minecraft/%i
@@ -31,13 +31,7 @@ write_files:
 
       ExecReload=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "reload"\\015'
 
-      ExecStop=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "say SERVER SHUTTING DOWN IN 15 SECONDS."\\015'
-      ExecStop=/bin/sleep 15
-      ExecStop=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "say SERVER SHUTTING DOWN. Saving world..."\\015'
-      ExecStop=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "save-all"\\015'
-      ExecStop=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "stop"\\015'
-      ExecStop=/bin/sync
-      ExecStop=/bin/sleep 10 # Async wait to stop
+      ExecStop=/opt/scripts/shutdown %i
 
       StandardOutput=syslog
       StandardError=syslog
@@ -50,11 +44,60 @@ write_files:
       WantedBy=multi-user.target
     owner: ec2-user:ec2-user
     permissions: '0750'
+  # - path: /etc/systemd/system/backupd@.timer
+  #   content: |
+  #     [Unit]
+  #     Description=Run minecraft backup nightly at 12:30 for %i
+  #     After=network.target
+
+  #     [Timer]
+  #     OnCalendar=*-*-* 0:30:00
+
+  #     [Install]
+  #     WantedBy=multi-user.target
+  #   owner: ec2-user:ec2-user
+  #   permissions: '0750'
+  # - path: /etc/systemd/system/backupd@.service
+  #   content: |
+  #     [Unit]
+  #     Description=Run minecraft backup on %i
+  #     After=network.target
+
+  #     [Service]
+  #     Type=oneshot
+  #     WorkingDirectory=/opt/minecraft/%i
+  #     PrivateUsers=true
+  #     User=ec2-user
+  #     Group=ec2-user
+  #     ProtectSystem=full
+  #     ProtectHome=true
+  #     ProtectKernelTunables=true
+  #     ProtectKernelModules=true
+  #     ProtectControlGroups=true
+
+  #     # --- Exec commands (executed inside WorkingDirectory)
+  #     ExecStart=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "say SERVER BACKUP STARTING. Server going readonly..."\\015'
+  #     ExecStart=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "save-off"\\015'
+  #     ExecStart=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "save-all"\\015'
+  #     ExecStart=/bin/sync
+  #     ExecStart=/bin/sleep 10 # Async wait to stop
+
+  #     ExecStartPost=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "save-on"\\015'
+  #     ExecStartPost=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "say SERVER BACKUP ENDED. Server now read-write."\\015'
+  #   owner: ec2-user:ec2-user
+  #   permissions: '0750'
 
 runcmd:
   - yum -y update
+  - mkdir -p /opt/scripts
   - mkdir -p /opt/minecraft/server
+  - mkdir -p /opt/minecraft/backups
   - aws s3 cp s3://${s3_bucket_name}/server /opt/minecraft/server --recursive
+  - aws s3 cp s3://${s3_bucket_name}/scripts /opt/scripts --recursive
   - chown -R ec2-user:ec2-user /opt/minecraft
+  - chown -R ec2-user:ec2-user /opt/scripts
+  - chmod +x /opt/scripts/*
   - systemctl enable minecraftd@server
   - systemctl start minecraftd@server
+  - echo "55 5 * * * /bin/sh /opt/scripts/shutdown server" >> /var/spool/cron/root
+  - echo "*/15 * * * * /bin/sh /opt/scripts/backup server" >> /var/spool/cron/root

@@ -7,7 +7,7 @@ resource "aws_launch_configuration" "lc" {
   image_id      = "${data.aws_ami.minecraft.id}"
   instance_type = "${var.instance_type}"
 
-  iam_instance_profile = "${aws_iam_instance_profile.server_profile.name}"
+  iam_instance_profile = "${aws_iam_instance_profile.s3_profile.name}"
 
   // spot_price = "${var.spot_price}"
 
@@ -16,24 +16,19 @@ resource "aws_launch_configuration" "lc" {
     "sg-03a223cdddca7909d",
     "sg-0d0507ed4257e1fb9",
   ]
-  key_name  = "minecraft-ssh"
+  key_name  = "${var.key_name}"
   user_data = "${data.template_file.minecraftd_init.rendered}"
   lifecycle {
     create_before_destroy = true
   }
 }
 
-data "aws_subnet" "selected" {
-  // id = "${var.subnet_id}"
-  id = "subnet-119ad61e"
-}
-
 resource "aws_autoscaling_group" "server_cluster" {
   name                 = "${var.project_name}-${var.component_name}"
   launch_configuration = "${aws_launch_configuration.lc.name}"
 
-  vpc_zone_identifier = ["${var.subnet_id}"]
-  load_balancers      = ["${aws_lb.load_balancer.name}"]
+  vpc_zone_identifier = ["${var.subnet_ids}"]
+  load_balancers      = ["${aws_elb.load_balancer.name}"]
 
   desired_capacity = 1
   min_size         = 0
@@ -99,20 +94,24 @@ resource "aws_autoscaling_schedule" "weekends_on" {
 }
 
 resource "aws_elb" "load_balancer" {
-  name               = "${var.project_name}-elb"
+  name = "${var.project_name}-elb"
+
+  cross_zone_load_balancing = true
+
   security_groups = [
     "sg-03a223cdddca7909d",
     "sg-0d0507ed4257e1fb9",
   ]
-  subnets            = ["${aws_subnet.selected}"]
-  internal           = false
+
+  subnets  = ["${var.subnet_ids}"]
+  internal = false
 
   # health_check {}
 
   listener {
-    lb_port = "25565"
-    lb_protocol = "tcp"
-    instance_port = "25565"
+    lb_port           = "25565"
+    lb_protocol       = "tcp"
+    instance_port     = "25565"
     instance_protocol = "tcp"
   }
 }

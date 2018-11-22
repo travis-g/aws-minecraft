@@ -8,12 +8,25 @@ variable "vpc_id" {
   description = "ID of the AWS VPC to provision inside"
 }
 
-variable "subnet_id" {
-  description = "Target subnet. Desired spot instance type must be available in the subnet's AZ"
-  default     = "subnet-79a4fe33"
+variable "subnet_ids" {
+  type        = "list"
+  description = "Target subnets. Desired spot instance type must be available in the subnet's AZ"
+}
+
+variable "availability_zones" {
+  type        = "list"
+  description = "Acceptable availability zones"
+
+  default = [
+    "us-east-1a",
+  ]
 }
 
 # --- Metadata
+
+variable "unique_prefix" {
+  description = "Unique prefix given to all resources"
+}
 
 variable "project_name" {
   description = "Slugified name of the infrastructure's overarching project"
@@ -21,6 +34,10 @@ variable "project_name" {
 
 variable "component_name" {
   description = "Slugified name of what this code creates"
+}
+
+variable "role_name" {
+  description = "Component role name"
 }
 
 # --- EC2 Variables
@@ -46,4 +63,8 @@ variable "spot_price" {
 
 variable "s3_bucket_name" {
   description = "S3 bucket for storing files"
+}
+
+variable "key_name" {
+  description = "Key name for SSH access"
 }

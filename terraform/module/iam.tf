@@ -3,6 +3,7 @@
 # -- Generic STS AssumeRole policy
 resource "aws_iam_role" "instance_iam_role" {
   name = "${var.role_name}"
+
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -31,15 +32,17 @@ resource "aws_iam_policy" "s3_iam_policy" {
   policy = "${data.aws_iam_policy_document.s3_policy_doc.json}"
 }
 
-resource "aws_iam_policy_attachment" "bucket_rw_attachment" {
-  name       = "bucket_rw_attachment"
+resource "aws_iam_policy_attachment" "bucket_policy_attachment" {
+  name       = "bucket_policy_attachment"
   roles      = ["${aws_iam_role.instance_iam_role.name}"]
-  policy_arn = "${aws_iam_policy.minecraft_s3_bucket_rw.arn}"
+  policy_arn = "${aws_iam_policy.s3_iam_policy.arn}"
 }
 
 data "aws_iam_policy_document" "s3_policy_doc" {
   statement {
     sid = "ListS3"
+
+    effect = "Allow"
 
     actions = [
       "s3:ListBucket",
@@ -53,27 +56,18 @@ data "aws_iam_policy_document" "s3_policy_doc" {
   statement {
     sid = "ReadWriteBucket"
 
+    effect = "Allow"
+
     actions = [
       "s3:PutObject",
+      "s3:PutObjectAcl",
       "s3:GetObject",
+      "s3:GetObjectAcl",
       "s3:DeleteObject",
     ]
 
     resources = [
       "arn:aws:s3:::${var.s3_bucket_name}/*",
-    ]
-  }
-
-  statement {
-    sid = "EncryptDecrypt"
-
-    actions = [
-      "kms:Encrypt",
-      "kms:Decrypt",
-    ]
-
-    resources = [
-      "arn:aws:kms:*:005911068294:key/828d45ea-8bd5-4668-b4b1-bb7014ce2959",
     ]
   }
 }
