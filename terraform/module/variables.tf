@@ -64,13 +64,3 @@ variable "s3_bucket_name" {
 variable "key_name" {
   description = "Name of the SSH key to use"
 }
-
-# --- Server
-
-variable "inbound_port" {
-  description = "Inbount port on which to accept server traffic"
-  default     = 25565
-}
-
-# --- Tagging
-

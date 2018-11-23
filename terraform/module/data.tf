@@ -1,5 +1,3 @@
-# --- Templates and seed data
-
 data "aws_ami" "minecraft" {
   most_recent = true
 
@@ -17,10 +15,13 @@ data "aws_ami" "minecraft" {
   owners = ["137112412989"]
 }
 
+# --- cloud-init config
 data "template_file" "minecraftd_init" {
   template = "${file("${path.module}/templates/user_data.yaml")}"
 
   vars {
+    region         = "${var.region}"
+    eip_alloc      = "${aws_eip.server_address.id}"
     s3_bucket_name = "${var.s3_bucket_name}"
   }
 }

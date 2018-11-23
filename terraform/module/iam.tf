@@ -70,4 +70,21 @@ data "aws_iam_policy_document" "s3_policy_doc" {
       "arn:aws:s3:::${var.s3_bucket_name}/*",
     ]
   }
+
+  statement {
+    sid = "AssociateEIP"
+
+    effect = "Allow"
+
+    actions = [
+      "ec2:DescribeAddresses",
+      "ec2:AllocateAddress",
+      "ec2:DescribeInstances",
+      "ec2:AssociateAddress",
+    ]
+
+    resources = [
+      "*",
+    ]
+  }
 }
