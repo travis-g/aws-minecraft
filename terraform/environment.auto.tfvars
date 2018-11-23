@@ -19,6 +19,7 @@ unique_prefix = "minecraft"
 
 subnet_ids = [
   "subnet-79a4fe33",
+  "subnet-607aed3c",
 ]
 
 key_name = "minecraft-ssh"

@@ -28,7 +28,9 @@ resource "aws_autoscaling_group" "server_cluster" {
   launch_configuration = "${aws_launch_configuration.lc.name}"
 
   vpc_zone_identifier = ["${var.subnet_ids}"]
-  load_balancers      = ["${aws_elb.load_balancer.name}"]
+
+  // load_balancers      = ["${aws_lb.load_balancer.name}"]
+  target_group_arns = ["${aws_lb_target_group.servers.arn}"]
 
   desired_capacity = 1
   min_size         = 0
@@ -64,7 +66,7 @@ resource "aws_autoscaling_schedule" "weeknights_on" {
   # 5PM EST Monday-Friday
   recurrence = "0 22 * * 1-5"
 
-  scheduled_action_name  = "weeknight-scale-up"
+  scheduled_action_name  = "weeknight-scale-in"
   min_size               = 0
   max_size               = 1
   desired_capacity       = 1
@@ -75,7 +77,7 @@ resource "aws_autoscaling_schedule" "weekdays_off" {
   # 1AM EST Monday-Friday
   recurrence = "0 6 * * 1-5"
 
-  scheduled_action_name  = "weekday-scale-down"
+  scheduled_action_name  = "weekday-scale-in"
   min_size               = 0
   max_size               = 1
   desired_capacity       = 0
@@ -83,35 +85,41 @@ resource "aws_autoscaling_schedule" "weekdays_off" {
 }
 
 resource "aws_autoscaling_schedule" "weekends_on" {
-  # 5PM EST Friday-Sunday
-  recurrence = "0 22 * * 5,6,0"
+  # 6PM EST Friday-Sunday
+  recurrence = "0 23 * * 5,6,0"
 
-  scheduled_action_name  = "weekend-scale-up"
+  scheduled_action_name  = "weekend-scale-out"
   min_size               = 0
   max_size               = 1
   desired_capacity       = 1
   autoscaling_group_name = "${aws_autoscaling_group.server_cluster.name}"
 }
 
-resource "aws_elb" "load_balancer" {
-  name = "${var.project_name}-elb"
+resource "aws_lb" "load_balancer" {
+  name               = "${var.project_name}-nlb"
+  load_balancer_type = "network"
 
-  cross_zone_load_balancing = true
-
-  security_groups = [
-    "sg-03a223cdddca7909d",
-    "sg-0d0507ed4257e1fb9",
-  ]
-
-  subnets  = ["${var.subnet_ids}"]
   internal = false
 
-  # health_check {}
+  enable_cross_zone_load_balancing = true
 
-  listener {
-    lb_port           = "25565"
-    lb_protocol       = "tcp"
-    instance_port     = "25565"
-    instance_protocol = "tcp"
+  subnets = ["${var.subnet_ids}"]
+}
+
+resource "aws_lb_listener" "minecraft" {
+  load_balancer_arn = "${aws_lb.load_balancer.arn}"
+  port              = "${var.inbound_port}"
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = "${aws_lb_target_group.servers.arn}"
   }
+}
+
+resource "aws_lb_target_group" "servers" {
+  name     = "${var.project_name}-servers"
+  port     = "${var.inbound_port}"
+  protocol = "TCP"
+  vpc_id   = "${var.vpc_id}"
 }

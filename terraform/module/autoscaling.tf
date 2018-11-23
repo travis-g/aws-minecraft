@@ -1,18 +1,18 @@
 resource "aws_sqs_queue" "graceful_termination_queue" {
-  name                        = "${var.project_name}_graceful_termination_queue"
-  message_retention_seconds   = 120
+  name                      = "${var.project_name}_graceful_termination_queue"
+  message_retention_seconds = 86400
 }
 
-resource "aws_autoscaling_lifecycle_hook" "graceful_shutdown_asg_hook" {
-  name                   = "graceful_shutdown_asg"
-  autoscaling_group_name = "${aws_autoscaling_group.server_cluster.name}"
-  default_result         = "CONTINUE"
+// resource "aws_autoscaling_lifecycle_hook" "graceful_shutdown_asg_hook" {
+//   name                   = "graceful_shutdown_asg"
+//   autoscaling_group_name = "${aws_autoscaling_group.server_cluster.name}"
+//   default_result         = "CONTINUE"
 
-  // hearbeat_timeout = 3600
-  lifecycle_transition    = "autoscaling:EC2_INSTANCE_TERMINATING"
-  notification_target_arn = "${aws_sqs_queue.graceful_termination_queue.arn}"
-  role_arn                = "${aws_iam_role.autoscaling_role.arn}"
-}
+//   heartbeat_timeout = 60
+//   lifecycle_transition    = "autoscaling:EC2_INSTANCE_TERMINATING"
+//   notification_target_arn = "${aws_sqs_queue.graceful_termination_queue.arn}"
+//   role_arn                = "${aws_iam_role.autoscaling_role.arn}"
+// }
 
 resource "aws_iam_role" "autoscaling_role" {
   name = "autoscaling_role"

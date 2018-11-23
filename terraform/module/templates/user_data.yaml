@@ -99,5 +99,7 @@ runcmd:
   - chmod +x /opt/scripts/*
   - systemctl enable minecraftd@server
   - systemctl start minecraftd@server
-  - echo "55 5 * * * /bin/sh /opt/scripts/shutdown server" >> /var/spool/cron/root
-  - echo "*/15 * * * * /bin/sh /opt/scripts/backup server" >> /var/spool/cron/root
+  # times in UTC
+  - echo "55 5 * * * /bin/sh /opt/scripts/shutdown server" >> /var/spool/cron/ec2-user
+  - echo "0 */8 * * * /bin/sh /opt/scripts/backup server" >> /var/spool/cron/ec2-user
+  - chown ec2-user:ec2-user /var/spool/cron/ec2-user
