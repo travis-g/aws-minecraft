@@ -15,7 +15,7 @@ sleep 5 # Async wait to stop
 screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SAVED TO DISK."\\015'
 
 # --- Archive target server backup
-tar -czvf /opt/minecraft/backups/$1.tgz /opt/minecraft/$1
+tar -C /opt/minecraft -czvf /opt/minecraft/backups/$1.tgz $1
 
 # --- Export
 /opt/scripts/export $1
