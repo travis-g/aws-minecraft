@@ -11,6 +11,11 @@ data "aws_ami" "minecraft" {
     values = ["hvm"]
   }
 
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+
   // amazon-owned
   owners = ["137112412989"]
 }

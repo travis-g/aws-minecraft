@@ -16,7 +16,7 @@ resource "aws_autoscaling_group" "server_cluster" {
 
   vpc_zone_identifier = ["${var.subnet_ids}"]
 
-  desired_capacity = 0
+  desired_capacity = 1
   min_size         = 0
   max_size         = 1
 
