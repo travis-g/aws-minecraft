@@ -27,4 +27,4 @@ screen -p 0 -S mc-$1 -X eval 'stuff "stop"\\015'
 sync
 sleep 5
 
-aws s3 sync /opt/minecraft/$1 s3://minecraft-btw/$1
+# aws s3 sync /opt/minecraft/$1 s3://minecraft-btw/$1
