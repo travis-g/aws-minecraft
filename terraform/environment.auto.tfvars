@@ -11,7 +11,9 @@ s3_bucket_name = "minecraft-btw"
 // instance_type= "m3.large"
 instance_type = "t2.micro"
 
-spot_price = 0.032
+spot_price = 0.004
+
+scale_down = false
 
 role_name = "minecraft-server"
 

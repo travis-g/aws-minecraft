@@ -57,6 +57,11 @@ variable "spot_price" {
   description = "Maximum bid for spot instances"
 }
 
+variable "scale_down" {
+  description = "Boolean to scale the cluster down during off hours"
+  default     = true
+}
+
 variable "s3_bucket_name" {
   description = "S3 bucket where related files will be exported"
 }
