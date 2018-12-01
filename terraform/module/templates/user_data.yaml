@@ -50,11 +50,11 @@ runcmd:
   - mkdir -p /opt/scripts
   - mkdir -p /opt/minecraft/backups
   - aws ec2 associate-address --instance-id `curl -s http://169.254.169.254/latest/meta-data/instance-id` --allocation-id ${eip_alloc} --allow-reassociation --region=${region}
-  - aws s3 cp s3://${s3_bucket_name}/backups/server.tgz /opt/minecraft
-  - tar -xvf /opt/minecraft/server.tgz -C /opt/minecraft
+  - aws s3 cp s3://${s3_bucket_name}/backups/${server_name}.tgz /opt/minecraft
+  - tar -xvf /opt/minecraft/${server_name}.tgz -C /opt/minecraft
   - aws s3 cp s3://${s3_bucket_name}/scripts /opt/scripts --recursive
   - chown -R ec2-user:ec2-user /opt/minecraft
   - chown -R ec2-user:ec2-user /opt/scripts
   - chmod +x /opt/scripts/*
-  - systemctl enable minecraftd@server
-  - systemctl start minecraftd@server
+  - systemctl enable minecraftd@${server_name}
+  - systemctl start minecraftd@${server_name}

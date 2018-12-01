@@ -22,6 +22,7 @@ module "minecraft_btw" {
   availability_zones = ["${var.availability_zones}"]
   key_name           = "${var.key_name}"
 
+  server_name    = "${var.server_name}"
   s3_bucket_name = "${var.s3_bucket_name}"
 
   use_spot_instances = "${var.use_spot_instances}"

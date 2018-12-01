@@ -68,3 +68,7 @@ variable "s3_bucket_name" {
 variable "key_name" {
   description = "Key name for SSH access"
 }
+
+variable "server_name" {
+  description = "Friendly name of the server to use when storing state"
+}

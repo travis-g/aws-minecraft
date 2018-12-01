@@ -28,5 +28,6 @@ data "template_file" "minecraftd_init" {
     region         = "${var.region}"
     eip_alloc      = "${aws_eip.server_address.id}"
     s3_bucket_name = "${var.s3_bucket_name}"
+    server_name    = "${var.server_name}"
   }
 }

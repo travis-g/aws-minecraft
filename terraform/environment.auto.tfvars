@@ -25,3 +25,5 @@ subnet_ids = [
 key_name = "minecraft-ssh"
 
 tag_project = "minecraft-cluster"
+
+server_name = "server"
