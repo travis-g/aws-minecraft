@@ -1,171 +1,103 @@
 #!/bin/bash
-# /etc/init.d/minecraft
-# version 0.4.0 2015-04-20 (YYYY-MM-DD)
-#
-### BEGIN INIT INFO
-# Provides:   minecraft
-# Required-Start: $local_fs $remote_fs screen-cleanup
-# Required-Stop:  $local_fs $remote_fs
-# Should-Start:   $network
-# Should-Stop:    $network
-# Default-Start:  2 3 4 5
-# Default-Stop:   0 1 6
-# Short-Description:    Minecraft server
-# Description:    Starts the minecraft server
-### END INIT INFO
-
-#Settings
-SERVICE='server.jar'
-OPTIONS='nogui'
-USERNAME='ec2-user'
-WORLD='world'
-MCPATH='/opt/minecraft/server'
-BACKUPPATH='/media/remote.share/minecraft.backup'
-MAXHEAP=1G
-MINHEAP=256M
-HISTORY=1024
-CPU_COUNT=1
-INVOCATION="java -Xmx${MAXHEAP} -Xms${MINHEAP} -XX:+UseConcMarkSweepGC \
--XX:+CMSIncrementalPacing -XX:ParallelGCThreads=$CPU_COUNT -XX:+AggressiveOpts \
--jar $SERVICE $OPTIONS"
-
-ME=`whoami`
-as_user() {
-  if [ "$ME" = "$USERNAME" ] ; then
-    bash -c "$1"
-  else
-    su - "$USERNAME" -c "$1"
-  fi
-}
 
 mc_start() {
-  if  pgrep -u $USERNAME -f $SERVICE > /dev/null
-  then
-    echo "$SERVICE is already running!"
-  else
-    echo "Starting $SERVICE..."
-    cd $MCPATH
-    as_user "cd $MCPATH && screen -h $HISTORY -dmS minecraft $INVOCATION"
-    sleep 7
-    if pgrep -u $USERNAME -f $SERVICE > /dev/null
-    then
-      echo "$SERVICE is now running."
-    else
-      echo "Error! Could not start $SERVICE!"
-    fi
-  fi
+  /bin/sh -c "/usr/bin/screen -DmS mc-$1 /usr/bin/java -server -Xms512M -Xmx1G -XX:+UseG1GC -XX:+CMSIncrementalPacing -XX:+CMSClassUnloadingEnabled -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -jar $(ls -v | grep -i 'FTBServer.*jar\|server.*jar' | head -n1) nogui"
 }
 
-mc_saveoff() {
-  if pgrep -u $USERNAME -f $SERVICE > /dev/null
-  then
-    echo "$SERVICE is running... suspending saves"
-    as_user "screen -p 0 -S minecraft -X eval 'stuff \"say SERVER BACKUP STARTING. Server going readonly...\"\015'"
-    as_user "screen -p 0 -S minecraft -X eval 'stuff \"save-off\"\015'"
-    as_user "screen -p 0 -S minecraft -X eval 'stuff \"save-all\"\015'"
-    sync
-    sleep 10
-  else
-    echo "$SERVICE is not running. Not suspending saves."
-  fi
-}
-
-mc_saveon() {
-  if pgrep -u $USERNAME -f $SERVICE > /dev/null
-  then
-    echo "$SERVICE is running... re-enabling saves"
-    as_user "screen -p 0 -S minecraft -X eval 'stuff \"save-on\"\015'"
-    as_user "screen -p 0 -S minecraft -X eval 'stuff \"say SERVER BACKUP ENDED. Server going read-write...\"\015'"
-  else
-    echo "$SERVICE is not running. Not resuming saves."
-  fi
+mc_reload() {
+  /usr/bin/screen -p 0 -S mc-$1 -X eval 'stuff "reload"\\015'
 }
 
 mc_stop() {
-  if pgrep -u $USERNAME -f $SERVICE > /dev/null
-  then
-    echo "Stopping $SERVICE"
-    as_user "screen -p 0 -S minecraft -X eval 'stuff \"say SERVER SHUTTING DOWN IN 10 SECONDS. Saving map...\"\015'"
-    as_user "screen -p 0 -S minecraft -X eval 'stuff \"save-all\"\015'"
-    sleep 10
-    as_user "screen -p 0 -S minecraft -X eval 'stuff \"stop\"\015'"
-    sleep 7
-  else
-    echo "$SERVICE was not running."
-  fi
-  if pgrep -u $USERNAME -f $SERVICE > /dev/null
-  then
-    echo "Error! $SERVICE could not be stopped."
-  else
-    echo "$SERVICE is stopped."
-  fi
+  screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTTING DOWN."\\015'
+  screen -p 0 -S mc-$1 -X eval 'stuff "stop"\\015'
 }
 
 mc_backup() {
-  mc_saveoff
+  screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP STARTING IN 60 SECONDS."\\015'
+  sleep 45
+  screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP STARTING IN 15 SECONDS."\\015'
+  sleep 15
+  screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP STARTING. Server going read-only..."\\015'
 
-  NOW=`date "+%Y-%m-%d_%Hh%M"`
-  BACKUP_FILE="$BACKUPPATH/${WORLD}_${NOW}.tar"
-  echo "Backing up minecraft world..."
-  as_user "tar -C \"$MCPATH\" -cf \"$BACKUP_FILE\" $WORLD"
+  mc_saveoff $1
+  mc_save $1
 
-  echo "Backing up $SERVICE"
-  as_user "tar -C \"$MCPATH\" -rf \"$BACKUP_FILE\" $SERVICE"
+  # --- Archive target server backup
+  mc_archive $1
 
-  mc_saveon
-
-  echo "Compressing backup..."
-  as_user "gzip -f \"$BACKUP_FILE\""
-  echo "Done."
+  screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP COMPLETE. Server going read-write."\\015'
+  mc_saveon $1
 }
 
-mc_command() {
-  command="$1";
-  if pgrep -u $USERNAME -f $SERVICE > /dev/null
-  then
-    pre_log_len=`wc -l "$MCPATH/logs/latest.log" | awk '{print $1}'`
-    echo "$SERVICE is running... executing command"
-    as_user "screen -p 0 -S minecraft -X eval 'stuff \"$command\"\015'"
-    sleep .1 # assumes that the command will run and print to the log file in less than .1 seconds
-    # print output
-    tail -n $[`wc -l "$MCPATH/logs/latest.log" | awk '{print $1}'`-$pre_log_len] "$MCPATH/logs/latest.log"
-  fi
+mc_save() {
+  screen -p 0 -S mc-$1 -X eval 'stuff "save-all"\\015'
+  sync
+  sleep 5 # Async wait to stop
+  screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SAVED TO DISK."\\015'
+}
+
+mc_saveoff() {
+  screen -p 0 -S mc-$1 -X eval 'stuff "save-off"\\015'
+}
+
+mc_saveon() {
+  screen -p 0 -S mc-$1 -X eval 'stuff "save-on"\\015'
+}
+
+mc_archive() {
+  tar -C /opt/minecraft -czvf /opt/minecraft/backups/$1.tgz $1
+
+  screen -p 0 -S mc-$1 -X eval 'stuff "say EXPORTING BACKUP TO S3..."\\015'
+  aws s3 cp /opt/minecraft/backups/$1.tgz s3://minecraft-btw/backups/$1.tgz
+  screen -p 0 -S mc-$1 -X eval 'stuff "say BACKUP EXPORTED TO S3."\\015'
+}
+
+# --- Full shutdown process, including archiving
+mc_shutdown() {
+  screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTDOWN STARTING IN 60 SECONDS."\\015'
+  sleep 45
+  screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTDOWN STARTING IN 15 SECONDS."\\015'
+  sleep 15
+  screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTDOWN STARTING. Server going read-only..."\\015'
+
+  mc_saveoff $1
+  mc_save $1
+
+  # --- Archive/export target server backup
+  mc_archive $1
+
+  screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTTING DOWN IN 5 SECONDS."\\015'
+  sleep 5
+  mc_stop $1
 }
 
 #Start-Stop here
 case "$1" in
   start)
-    mc_start
+    mc_start $2
     ;;
   stop)
-    mc_stop
+    mc_stop $2
     ;;
   restart)
-    mc_stop
-    mc_start
+    mc_stop $2
+    mc_start $2
+    ;;
+  reload)
+    mc_reload $2
+    ;;
+  shutdown)
+    mc_shutdown $2
     ;;
   backup)
-    mc_backup
+    mc_backup $2
     ;;
-  status)
-    if pgrep -u $USERNAME -f $SERVICE > /dev/null
-    then
-      echo "$SERVICE is running."
-    else
-      echo "$SERVICE is not running."
-    fi
+  archive)
+    mc_archive $2
     ;;
-  command)
-    if [ $# -gt 1 ]; then
-      shift
-      mc_command "$*"
-    else
-      echo "Must specify server command (try 'help'?)"
-    fi
-    ;;
-
   *)
-  echo "Usage: $0 {start|stop|backup|status|restart|command \"server command\"}"
+  echo "Usage: $0 {start|stop|restart|reload|shutdown|backup|archive} <server>"
   exit 1
   ;;
 esac
