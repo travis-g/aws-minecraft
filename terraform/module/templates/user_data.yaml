@@ -7,13 +7,27 @@ packages:
   - java-1.8.0-openjdk-headless
   - jq
 
+# --- Chown these files later: https://serverfault.com/questions/752027/cloud-init-module-order-is-wrong-how-to-fix
 write_files:
+  - path: /etc/systemd/system/terminationd.service
+    permissions: '0750'
+    content: |
+      [Unit]
+      Description=Spot Instance Termination Early Warning
+      After=network.target
+
+      [Service]
+      ExecStart=/usr/sbin/terminationd
+      StandardOutput=syslog
+      StandardError=syslog
   - path: /etc/systemd/system/minecraftd@.service
+    permissions: '0750'
     content: |
       [Unit]
       Description=Minecraft Server %i
       After=network.target
       Requires=network.target
+      BindsTo=terminationd.service
 
       [Service]
       WorkingDirectory=/opt/minecraft/%i
@@ -42,12 +56,16 @@ write_files:
 
       [Install]
       WantedBy=multi-user.target
-    owner: ec2-user:ec2-user
+  - path: /var/spool/cron/ec2-user
     permissions: '0750'
+    content: |
+      # Times in UTC
+      0 3,7 * * * /opt/scripts/backup ${server_name}
 
 runcmd:
   - aws ec2 associate-address --instance-id `curl -s http://169.254.169.254/latest/meta-data/instance-id` --allocation-id ${eip_alloc} --allow-reassociation --region=${region}
-  - yum -y update
+  - curl -L "https://github.com/travis-g/terminationd/releases/download/v0.0.1/terminationd_0.0.1_linux_amd64.zip" | gunzip > /usr/sbin/terminationd && chmod +x /usr/sbin/terminationd
+  - systemctl enable terminationd.service --now
   - mkdir -p /opt/scripts
   - mkdir -p /opt/minecraft/backups
   - aws s3 cp s3://${s3_bucket_name}/backups/${server_name}.tgz /opt/minecraft
@@ -56,8 +74,6 @@ runcmd:
   - chown -R ec2-user:ec2-user /opt/minecraft
   - chown -R ec2-user:ec2-user /opt/scripts
   - chmod +x /opt/scripts/*
-  - systemctl enable minecraftd@${server_name}
-  - systemctl start minecraftd@${server_name}
-  # Times in UTC
-  - echo "0 3,7 * * * /opt/scripts/backup ${server_name}" >> /var/spool/cron/ec2-user
+  - chown ec2-user:ec2-user /etc/systemd/system/minecraftd@.service
+  - systemctl enable minecraftd@${server_name} --now
   - chown ec2-user:ec2-user /var/spool/cron/ec2-user
