@@ -1,21 +1,30 @@
 #!/bin/bash
 
+logger() {
+  printf "[%s] %s\n" "$(date --rfc-3339=seconds)" "$1"
+}
+
 mc_start() {
-  /bin/sh -c "/usr/bin/screen -DmS mc-$1 /usr/bin/java -server -Xms512M -Xmx1G -XX:+UseG1GC -XX:+CMSIncrementalPacing -XX:+CMSClassUnloadingEnabled -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -jar $(ls -v | grep -i 'FTBServer.*jar\|server.*jar' | head -n1) nogui"
+  logger "Starting server..."
+  /bin/sh -c "/usr/bin/screen -DmS mc-$1 /usr/bin/java -server -Xms512M -Xmx3G -XX:+UseG1GC -XX:+CMSIncrementalPacing -XX:+CMSClassUnloadingEnabled -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -jar $(ls -v | grep -i 'FTBServer*.jar\|server.*jar' | head -n1) nogui"
 }
 
 mc_reload() {
+  logger "Reloading server..."
   /usr/bin/screen -p 0 -S mc-$1 -X eval 'stuff "reload"\\015'
 }
 
 mc_stop() {
+  logger "Stopping."
   screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTTING DOWN."\\015'
   screen -p 0 -S mc-$1 -X eval 'stuff "stop"\\015'
 }
 
 mc_backup() {
+  logger "Sending 60 second warning..." &
   screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP STARTING IN 60 SECONDS."\\015'
   sleep 45
+  logger "Sending 15 second warning..." &
   screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP STARTING IN 15 SECONDS."\\015'
   sleep 15
   screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP STARTING. Server going read-only..."\\015'
@@ -30,33 +39,50 @@ mc_backup() {
   mc_saveon $1
 }
 
+mc_update() {
+  logger "Downloading update..."
+  curl -L "$2" > /tmp/server.jar
+  rm /opt/minecraft/$1/server.jar
+  mv /tmp/server.jar /opt/minecraft/$1/
+  logger "JAR updated."
+}
+
 mc_save() {
+  logger "Saving all..."
   screen -p 0 -S mc-$1 -X eval 'stuff "save-all"\\015'
   sync
-  sleep 5 # Async wait to stop
+  sleep 5 # Sync wait to stop
+  logger "Saved."
   screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SAVED TO DISK."\\015'
 }
 
 mc_saveoff() {
+  logger "Going read-only..."
   screen -p 0 -S mc-$1 -X eval 'stuff "save-off"\\015'
 }
 
 mc_saveon() {
+  logger "Going read-write..."
   screen -p 0 -S mc-$1 -X eval 'stuff "save-on"\\015'
 }
 
 mc_archive() {
-  tar -C /opt/minecraft -czvf /opt/minecraft/backups/$1.tgz $1
+  logger "Archiving..."
+  tar -C /opt/minecraft -czvf /opt/minecraft/backups/$1.tgz $1/world
 
+  logger "Exporting..."
   screen -p 0 -S mc-$1 -X eval 'stuff "say EXPORTING BACKUP TO S3..."\\015'
   aws s3 cp /opt/minecraft/backups/$1.tgz s3://minecraft-btw/backups/$1.tgz
   screen -p 0 -S mc-$1 -X eval 'stuff "say BACKUP EXPORTED TO S3."\\015'
 }
 
+mc_status() {
+  netstat | grep ":25565" | wc -l
+}
+
 # --- Full shutdown process, including archiving
 mc_shutdown() {
-  screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTDOWN STARTING IN 60 SECONDS."\\015'
-  sleep 45
+  logger "Sending 15 second warning..." &
   screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTDOWN STARTING IN 15 SECONDS."\\015'
   sleep 15
   screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTDOWN STARTING. Server going read-only..."\\015'
@@ -96,8 +122,18 @@ case "$1" in
   archive)
     mc_archive $2
     ;;
+  update)
+    mc_backup $2
+    mc_stop $2
+    mc_update $2 $3
+    mc_start $2
+    ;;
+  status)
+    mc_status $2
+    ;;
   *)
-  echo "Usage: $0 {start|stop|restart|reload|shutdown|backup|archive} <server>"
+  echo "Usage: $0 (start|stop|restart|reload|shutdown|backup|archive) <server>"
+  echo "       $0 update <server> <url-to-jar>"
   exit 1
   ;;
 esac

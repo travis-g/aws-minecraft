@@ -70,7 +70,7 @@ resource "aws_launch_configuration" "lc" {
 # --- Autoscaling schedules (UTC)
 
 resource "aws_autoscaling_schedule" "nights_on" {
-  scheduled_action_name = "weeknight-scale-in"
+  scheduled_action_name = "weeknight-scale-out"
 
   # 5PM EST every night
   recurrence       = "0 22 * * *"

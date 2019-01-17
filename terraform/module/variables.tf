@@ -57,6 +57,11 @@ variable "spot_price" {
   description = "Maximum bid for spot instances"
 }
 
+variable "manual_scale_up" {
+  description = "Boolean to scale the cluster manually by setting desired instance count"
+  default     = false
+}
+
 variable "scale_down" {
   description = "Boolean to scale the cluster down during off hours"
   default     = true

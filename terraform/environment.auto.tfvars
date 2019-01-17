@@ -8,12 +8,13 @@ component_name = "cluster"
 
 s3_bucket_name = "minecraft-btw"
 
-// instance_type= "m3.large"
-instance_type = "t2.micro"
+// instance_type = "t2.micro"
+// instance_type = "m3.large"
+instance_type = "t3.medium"
 
-spot_price = 0.004
+spot_price = ""
 
-scale_down = false
+scale_down = true
 
 role_name = "minecraft-server"
 
@@ -28,4 +29,4 @@ key_name = "minecraft-ssh"
 
 tag_project = "minecraft-cluster"
 
-server_name = "server"
+server_name = "skyfactory"

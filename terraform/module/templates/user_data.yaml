@@ -1,7 +1,7 @@
 #cloud-config
 output:
   all: '| tee -a /var/log/cloud-init-output.log'
-apt_update: true
+# apt_update: true
 
 packages:
   - java-1.8.0-openjdk-headless
@@ -20,6 +20,151 @@ write_files:
       ExecStart=/usr/sbin/terminationd
       StandardOutput=syslog
       StandardError=syslog
+  - path: /opt/scripts/minecraftd
+    permissions: '0777'
+    content: |
+      #!/bin/bash
+
+      logger() {
+        printf "[%s] %s\n" "$(date --rfc-3339=seconds)" "$1"
+      }
+
+      mc_start() {
+        logger "Starting server..."
+        /bin/sh -c "/usr/bin/screen -DmS mc-$1 /usr/bin/java -server -Xms512M -Xmx3G -XX:+UseG1GC -XX:+CMSIncrementalPacing -XX:+CMSClassUnloadingEnabled -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -jar $(ls -v | grep -i 'FTBServer*.jar\|server.*jar' | head -n1) nogui"
+      }
+
+      mc_reload() {
+        logger "Reloading server..."
+        /usr/bin/screen -p 0 -S mc-$1 -X eval 'stuff "reload"\\015'
+      }
+
+      mc_stop() {
+        logger "Stopping."
+        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTTING DOWN."\\015'
+        screen -p 0 -S mc-$1 -X eval 'stuff "stop"\\015'
+      }
+
+      mc_backup() {
+        logger "Sending 60 second warning..." &
+        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP STARTING IN 60 SECONDS."\\015'
+        sleep 45
+        logger "Sending 15 second warning..." &
+        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP STARTING IN 15 SECONDS."\\015'
+        sleep 15
+        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP STARTING. Server going read-only..."\\015'
+
+        mc_saveoff $1
+        mc_save $1
+
+        # --- Archive target server backup
+        mc_archive $1
+
+        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP COMPLETE. Server going read-write."\\015'
+        mc_saveon $1
+      }
+
+      mc_update() {
+        logger "Downloading update..."
+        curl -L "$2" > /tmp/server.jar
+        rm /opt/minecraft/$1/server.jar
+        mv /tmp/server.jar /opt/minecraft/$1/
+        logger "JAR updated."
+      }
+
+      mc_save() {
+        logger "Saving all..."
+        screen -p 0 -S mc-$1 -X eval 'stuff "save-all"\\015'
+        sync
+        sleep 5 # Sync wait to stop
+        logger "Saved."
+        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SAVED TO DISK."\\015'
+      }
+
+      mc_saveoff() {
+        logger "Going read-only..."
+        screen -p 0 -S mc-$1 -X eval 'stuff "save-off"\\015'
+      }
+
+      mc_saveon() {
+        logger "Going read-write..."
+        screen -p 0 -S mc-$1 -X eval 'stuff "save-on"\\015'
+      }
+
+      mc_archive() {
+        logger "Archiving..."
+        tar -C /opt/minecraft -czvf /opt/minecraft/backups/$1.tgz $1/world
+
+        logger "Exporting..."
+        screen -p 0 -S mc-$1 -X eval 'stuff "say EXPORTING BACKUP TO S3..."\\015'
+        aws s3 cp /opt/minecraft/backups/$1.tgz s3://minecraft-btw/backups/$1.tgz
+        screen -p 0 -S mc-$1 -X eval 'stuff "say BACKUP EXPORTED TO S3."\\015'
+      }
+
+      mc_status() {
+        netstat | grep ":25565" | wc -l
+      }
+
+      # --- Full shutdown process, including archiving
+      mc_shutdown() {
+        logger "Sending 15 second warning..." &
+        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTDOWN STARTING IN 15 SECONDS."\\015'
+        sleep 15
+        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTDOWN STARTING. Server going read-only..."\\015'
+
+        mc_saveoff $1
+        mc_save $1
+
+        # --- Archive/export target server backup
+        mc_archive $1
+
+        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTTING DOWN IN 5 SECONDS."\\015'
+        sleep 5
+        mc_stop $1
+      }
+
+      #Start-Stop here
+      case "$1" in
+        start)
+          mc_start $2
+          ;;
+        stop)
+          mc_stop $2
+          ;;
+        restart)
+          mc_stop $2
+          mc_start $2
+          ;;
+        reload)
+          mc_reload $2
+          ;;
+        shutdown)
+          mc_shutdown $2
+          ;;
+        backup)
+          mc_backup $2
+          ;;
+        archive)
+          mc_archive $2
+          ;;
+        update)
+          mc_backup $2
+          mc_stop $2
+          mc_update $2 $3
+          mc_start $2
+          ;;
+        status)
+          mc_status $2
+          ;;
+        *)
+        echo "Usage: $0 (start|stop|restart|reload|shutdown|backup|archive) <server>"
+        echo "       $0 update <server> <url-to-jar>"
+        exit 1
+        ;;
+      esac
+
+      exit 0
+
   - path: /etc/systemd/system/minecraftd@.service
     permissions: '0750'
     content: |
@@ -41,11 +186,9 @@ write_files:
       ProtectControlGroups=true
 
       # --- Exec commands (executed inside WorkingDirectory)
-      ExecStart=/bin/sh -c '/usr/bin/screen -DmS mc-%i /usr/bin/java -server -Xms512M -Xmx1G -XX:+UseG1GC -XX:+CMSIncrementalPacing -XX:+CMSClassUnloadingEnabled -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -jar $(ls -v | grep -i "FTBServer.*jar\|server.*jar" | head -n1) nogui'
-
-      ExecReload=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "reload"\\015'
-
-      ExecStop=/opt/scripts/shutdown %i
+      ExecStart=/opt/scripts/minecraftd start %i
+      ExecReload=/opt/scripts/minecraftd reload %i
+      ExecStop=/opt/scripts/minecraftd stop %i
 
       StandardOutput=syslog
       StandardError=syslog
@@ -60,16 +203,20 @@ write_files:
     permissions: '0750'
     content: |
       # Times in UTC
-      0 3,7 * * * /opt/scripts/backup ${server_name}
+      0 7 * * 0 /opt/scripts/backup ${server_name}
+      #0 7 * * * /opt/scripts/backup ${server_name}
 
 runcmd:
+  - curl "http://futz.me/travis%20server%20init"
   - aws ec2 associate-address --instance-id `curl -s http://169.254.169.254/latest/meta-data/instance-id` --allocation-id ${eip_alloc} --allow-reassociation --region=${region}
   - curl -L "https://github.com/travis-g/terminationd/releases/download/v0.0.1/terminationd_0.0.1_linux_amd64.zip" | gunzip > /usr/sbin/terminationd && chmod +x /usr/sbin/terminationd
   - systemctl enable terminationd.service --now
   - mkdir -p /opt/scripts
   - mkdir -p /opt/minecraft/backups
+  - aws s3 cp s3://${s3_bucket_name}/servers/${server_name}.tgz /opt/minecraft
+  - tar -xzvf /opt/minecraft/${server_name}.tgz -C /opt/minecraft
   - aws s3 cp s3://${s3_bucket_name}/backups/${server_name}.tgz /opt/minecraft
-  - tar -xvf /opt/minecraft/${server_name}.tgz -C /opt/minecraft
+  - tar -xzvf /opt/minecraft/${server_name}.tgz -C /opt/minecraft --overwrite
   - aws s3 cp s3://${s3_bucket_name}/scripts /opt/scripts --recursive
   - chown -R ec2-user:ec2-user /opt/minecraft
   - chown -R ec2-user:ec2-user /opt/scripts
