@@ -50,18 +50,15 @@ resource "aws_launch_configuration" "lc" {
 
   iam_instance_profile = "${aws_iam_instance_profile.s3_profile.name}"
 
-  spot_price = "${var.spot_price}"
+  // spot_price = "${var.spot_price}"
 
   associate_public_ip_address = true
-
   security_groups = [
     "sg-03a223cdddca7909d",
     "sg-0d0507ed4257e1fb9",
   ]
-
   key_name  = "${var.key_name}"
   user_data = "${data.template_file.minecraftd_init.rendered}"
-
   lifecycle {
     create_before_destroy = true
   }
@@ -69,23 +66,23 @@ resource "aws_launch_configuration" "lc" {
 
 # --- Autoscaling schedules (UTC)
 
-resource "aws_autoscaling_schedule" "nights_on" {
-  scheduled_action_name = "weeknight-scale-out"
+// resource "aws_autoscaling_schedule" "nights_on" {
+//   scheduled_action_name = "weeknight-scale-out"
 
-  # 5PM EST every night
-  recurrence       = "0 22 * * *"
-  desired_capacity = 1
+//   # 5PM EST every night
+//   recurrence       = "0 22 * * *"
+//   // desired_capacity = 0
 
-  min_size               = 0
-  max_size               = 1
-  autoscaling_group_name = "${aws_autoscaling_group.server_cluster.name}"
-}
+//   min_size               = 0
+//   max_size               = 1
+//   autoscaling_group_name = "${aws_autoscaling_group.server_cluster.name}"
+// }
 
 resource "aws_autoscaling_schedule" "weekdays_off" {
   scheduled_action_name = "weekday-scale-in"
 
-  # 1AM EST Monday-Friday (does not trigger Saturday/Sunday)
-  recurrence       = "0 6 * * 1-5"
+  # 12AM EST Monday-Friday
+  recurrence       = "0 5 * * *"
   desired_capacity = "${var.scale_down ? 0 : 1}"
 
   min_size               = 0

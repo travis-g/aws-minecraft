@@ -6,6 +6,7 @@ output:
 packages:
   - java-1.8.0-openjdk-headless
   - jq
+  - p7zip
 
 # --- Chown these files later: https://serverfault.com/questions/752027/cloud-init-module-order-is-wrong-how-to-fix
 write_files:
@@ -209,14 +210,15 @@ write_files:
       #0 7 * * * /opt/scripts/backup ${server_name}
 
 runcmd:
-  - curl "http://futz.me/travis%20server%20init"
   - aws ec2 associate-address --instance-id `curl -s http://169.254.169.254/latest/meta-data/instance-id` --allocation-id ${eip_alloc} --allow-reassociation --region=${region}
   - curl -L "https://github.com/travis-g/terminationd/releases/download/v0.0.1/terminationd_0.0.1_linux_amd64.zip" | gunzip > /usr/sbin/terminationd && chmod +x /usr/sbin/terminationd
   - systemctl enable terminationd.service --now
   - mkdir -p /opt/scripts
   - mkdir -p /opt/minecraft/backups
-  - aws s3 cp s3://${s3_bucket_name}/servers/${server_name}.tgz /opt/minecraft
-  - tar -xzvf /opt/minecraft/${server_name}.tgz -C /opt/minecraft
+  - amazon-linux-extras install -y epel
+  - yum install -y p7zip
+  - aws s3 cp s3://${s3_bucket_name}/servers/${server_name}.7z /opt/minecraft
+  - 7za x /opt/minecraft/${server_name}.7z -o/opt/minecraft
   - aws s3 cp s3://${s3_bucket_name}/backups/${server_name}.tgz /opt/minecraft
   - tar -xzvf /opt/minecraft/${server_name}.tgz -C /opt/minecraft --overwrite
   - aws s3 cp s3://${s3_bucket_name}/scripts /opt/scripts --recursive
