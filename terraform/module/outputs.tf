@@ -9,3 +9,7 @@ output "server_name" {
 output "elastic_ip_address" {
   value = "${aws_eip.server_address.public_ip}"
 }
+
+output "key_name" {
+  value = "${var.key_name}"
+}

@@ -28,6 +28,7 @@ module "minecraft_btw" {
   use_spot_instances = "${var.use_spot_instances}"
   spot_price         = "${var.spot_price}"
   scale_down         = "${var.scale_down}"
+  log_retention      = "${var.log_retention}"
 
   unique_prefix  = "${var.unique_prefix}"
   project_name   = "${var.project_name}"

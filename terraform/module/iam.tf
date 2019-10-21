@@ -27,7 +27,7 @@ resource "aws_iam_instance_profile" "s3_profile" {
 }
 
 resource "aws_iam_policy" "s3_iam_policy" {
-  name   = "${var.role_name}_policy"
+  name   = "${var.role_name}_s3_policy"
   path   = "/"
   policy = "${data.aws_iam_policy_document.s3_policy_doc.json}"
 }
@@ -85,6 +85,38 @@ data "aws_iam_policy_document" "s3_policy_doc" {
 
     resources = [
       "*",
+    ]
+  }
+}
+
+resource "aws_iam_policy" "cloudwatch_iam_policy" {
+  name   = "${var.role_name}_cloudwatch_policy"
+  path   = "/"
+  policy = "${data.aws_iam_policy_document.cloudwatch_policy_doc.json}"
+}
+
+resource "aws_iam_policy_attachment" "cloudwatch_policy_attachment" {
+  name       = "cloudwatch_policy_attachment"
+  roles      = ["${aws_iam_role.instance_iam_role.name}"]
+  policy_arn = "${aws_iam_policy.cloudwatch_iam_policy.arn}"
+}
+
+data "aws_iam_policy_document" "cloudwatch_policy_doc" {
+  statement {
+    sid = "CloudWatchLogs"
+
+    effect = "Allow"
+
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:DescribeLogStreams",
+    ]
+
+    // arn:aws:logs:us-east-1:005911068294:log-group:/var/log/messages:log-stream:i-098bba81012746b12
+    resources = [
+      "arn:aws:logs:${var.region}:*:*",
     ]
   }
 }

@@ -1,7 +1,0 @@
-#!/bin/sh
-
-: ${1?Target server must be set}
-
-screen -p 0 -S mc-$1 -X eval 'stuff "say EXPORTING BACKUPS TO S3..."\\015'
-aws s3 cp /opt/minecraft/backups/$1.tgz s3://minecraft-btw/backups/$1.tgz
-screen -p 0 -S mc-$1 -X eval 'stuff "say BACKUPS EXPORTED TO S3."\\015'

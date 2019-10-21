@@ -6,6 +6,7 @@ output:
 packages:
   - java-1.8.0-openjdk-headless
   - jq
+  - awslogs
   - p7zip
 
 # --- Chown these files later: https://serverfault.com/questions/752027/cloud-init-module-order-is-wrong-how-to-fix
@@ -37,7 +38,7 @@ write_files:
 
       mc_start() {
         logger "Starting server..."
-        /bin/sh -c "/usr/bin/screen -DmS mc-$1 /usr/bin/java -server -Xms512M -Xmx3G -XX:+UseG1GC -XX:+CMSIncrementalPacing -XX:+CMSClassUnloadingEnabled -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -jar $(ls -v | grep -i 'FTBServer*.jar\|server.*jar' | head -n1) nogui"
+        /bin/sh -c "/usr/bin/screen -DmS mc-$1 /usr/bin/java -server -Xms512M -Xmx6G -XX:+UseG1GC -XX:+CMSIncrementalPacing -XX:+CMSClassUnloadingEnabled -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -jar $(ls -v | grep -i 'FTBServer*.jar\|server.*jar' | head -n1) nogui"
       }
 
       mc_reload() {
@@ -126,7 +127,6 @@ write_files:
         mc_stop $1
       }
 
-      #Start-Stop here
       case "$1" in
         start)
           mc_start $2
@@ -160,9 +160,9 @@ write_files:
           mc_status $2
           ;;
         *)
-        echo "Usage: $0 (start|stop|restart|reload|shutdown|backup|archive) <server>"
-        echo "       $0 update <server> <url-to-jar>"
-        exit 1
+          echo "Usage: $0 (start|stop|restart|reload|shutdown|backup|archive) <server>"
+          echo "       $0 update <server> <url-to-jar>"
+          exit 1
         ;;
       esac
 
@@ -175,6 +175,7 @@ write_files:
       Description=Minecraft Server %i
       After=network.target
       Requires=network.target
+      # Bind to termination warning service in case we're on a Spot instance
       BindsTo=terminationd.service
 
       [Service]
@@ -202,17 +203,33 @@ write_files:
 
       [Install]
       WantedBy=multi-user.target
-  - path: /var/spool/cron/ec2-user
+
+  - path: /etc/cron.d/minecraftd
+    owner: root:root
+    permissions: '0644'
+    content: |
+      0 */4 * * * ec2-user /opt/scripts/minecraftd backup ${server_name}
+
+  - path: /etc/awslogs/awslogs.conf
+    owner: root:root
     permissions: '0750'
     content: |
-      # Times in UTC
-      0 7 * * 0 /opt/scripts/backup ${server_name}
-      #0 7 * * * /opt/scripts/backup ${server_name}
+      [general]
+      state_file = /var/lib/awslogs/agent-state
+
+      [forge_server]
+      datetime_format = %Y-%m-%d %H:%M:%S
+      file = /opt/minecraft/${server_name}/ForgeModLoader-server-0.log
+      buffer_duration = 5000
+      log_stream_name = {instance_id}_${server_name}
+      initial_position = start_of_file
+      log_group_name = minecraft_${server_name}_logs
 
 runcmd:
   - aws ec2 associate-address --instance-id `curl -s http://169.254.169.254/latest/meta-data/instance-id` --allocation-id ${eip_alloc} --allow-reassociation --region=${region}
   - curl -L "https://github.com/travis-g/terminationd/releases/download/v0.0.1/terminationd_0.0.1_linux_amd64.zip" | gunzip > /usr/sbin/terminationd && chmod +x /usr/sbin/terminationd
   - systemctl enable terminationd.service --now
+  - systemctl enable awslogsd --now
   - mkdir -p /opt/scripts
   - mkdir -p /opt/minecraft/backups
   - amazon-linux-extras install -y epel
@@ -221,10 +238,8 @@ runcmd:
   - 7za x /opt/minecraft/${server_name}.7z -o/opt/minecraft
   - aws s3 cp s3://${s3_bucket_name}/backups/${server_name}.tgz /opt/minecraft
   - tar -xzvf /opt/minecraft/${server_name}.tgz -C /opt/minecraft --overwrite
-  - aws s3 cp s3://${s3_bucket_name}/scripts /opt/scripts --recursive
   - chown -R ec2-user:ec2-user /opt/minecraft
   - chown -R ec2-user:ec2-user /opt/scripts
   - chmod +x /opt/scripts/*
   - chown ec2-user:ec2-user /etc/systemd/system/minecraftd@.service
   - systemctl enable minecraftd@${server_name} --now
-  - chown ec2-user:ec2-user /var/spool/cron/ec2-user

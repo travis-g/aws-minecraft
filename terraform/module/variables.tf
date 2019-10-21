@@ -78,3 +78,10 @@ variable "key_name" {
 variable "server_name" {
   description = "Friendly name of the server to use when storing state"
 }
+
+# -- CloudWatch Variables
+
+variable "log_retention" {
+  description = "Number of days after which logs will expire"
+  default     = 0
+}

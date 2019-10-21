@@ -10,7 +10,9 @@ s3_bucket_name = "minecraft-btw"
 
 // instance_type = "t2.micro"
 // instance_type = "m3.large"
-instance_type = "t3.medium"
+instance_type = "t3.large"
+
+use_elastic_ip = true
 
 spot_price = ""
 
@@ -30,3 +32,5 @@ key_name = "minecraft-ssh"
 tag_project = "minecraft-cluster"
 
 server_name = "aws-primo"
+
+log_retention = 3
