@@ -48,6 +48,11 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 
+variable "ram_allocation" {
+  description = "RAM allocation, in gigabytes, for the Java server process"
+  default     = 3
+}
+
 variable "use_spot_instances" {
   description = "Option to use Spot instances"
   default     = false

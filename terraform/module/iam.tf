@@ -114,7 +114,6 @@ data "aws_iam_policy_document" "cloudwatch_policy_doc" {
       "logs:DescribeLogStreams",
     ]
 
-    // arn:aws:logs:us-east-1:005911068294:log-group:/var/log/messages:log-stream:i-098bba81012746b12
     resources = [
       "arn:aws:logs:${var.region}:*:*",
     ]

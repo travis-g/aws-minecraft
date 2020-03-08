@@ -83,8 +83,10 @@ resource "aws_launch_configuration" "lc" {
 resource "aws_autoscaling_schedule" "nights_on" {
   scheduled_action_name = "weeknight-scale-out"
 
-  recurrence       = "0 21 * * *"
+  recurrence       = "0 22 * * *"
   desired_capacity = 1
+  min_size         = 0
+  max_size         = 1
 
   autoscaling_group_name = "${aws_autoscaling_group.server_cluster.name}"
 }
@@ -92,8 +94,10 @@ resource "aws_autoscaling_schedule" "nights_on" {
 resource "aws_autoscaling_schedule" "weekdays_off" {
   scheduled_action_name = "weekday-scale-in"
 
-  recurrence       = "0 6 * * *"
-  desired_capacity = "${var.scale_down ? 0 : 1}"
+  recurrence       = "0 7 * * *"
+  desired_capacity = 0
+  min_size         = 0
+  max_size         = 1
 
   autoscaling_group_name = "${aws_autoscaling_group.server_cluster.name}"
 }

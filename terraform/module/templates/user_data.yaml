@@ -38,7 +38,7 @@ write_files:
 
       mc_start() {
         logger "Starting server..."
-        /bin/sh -c "/usr/bin/screen -DmS mc-$1 /usr/bin/java -server -Xms512M -Xmx6G -XX:+UseG1GC -XX:+CMSIncrementalPacing -XX:+CMSClassUnloadingEnabled -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -jar $(ls -v | grep -i 'FTBServer*.jar\|server.*jar' | head -n1) nogui"
+        /bin/sh -c "/usr/bin/screen -DmS mc-$1 /usr/bin/java -server -Xms512M -Xmx${ram_alloc}G -XX:+UseG1GC -XX:+CMSIncrementalPacing -XX:+CMSClassUnloadingEnabled -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -jar $(ls -v | grep -i 'FTBServer*.jar\|server.*jar' | head -n1) nogui"
       }
 
       mc_reload() {
@@ -79,8 +79,8 @@ write_files:
       mc_save() {
         logger "Saving all..."
         screen -p 0 -S mc-$1 -X eval 'stuff "save-all"\\015'
+        sleep 10 # Sync wait to stop
         sync
-        sleep 5 # Sync wait to stop
         logger "Saved."
         screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SAVED TO DISK."\\015'
       }
@@ -107,6 +107,10 @@ write_files:
 
       mc_status() {
         netstat | grep ":25565" | wc -l
+      }
+
+      mc_list() {
+        screen -p 0 -S mc-$1 -X eval "stuff 'list'\\015"
       }
 
       # --- Full shutdown process, including archiving
@@ -159,8 +163,11 @@ write_files:
         status)
           mc_status $2
           ;;
+        list)
+          mc_list $2
+          ;;
         *)
-          echo "Usage: $0 (start|stop|restart|reload|shutdown|backup|archive) <server>"
+          echo "Usage: $0 (start|stop|restart|reload|shutdown|backup|archive|list) <server>"
           echo "       $0 update <server> <url-to-jar>"
           exit 1
         ;;
@@ -209,6 +216,7 @@ write_files:
     permissions: '0644'
     content: |
       0 */4 * * * ec2-user /opt/scripts/minecraftd backup ${server_name}
+      */5 * * * * ec2-user /opt/scripts/minecraftd list ${server_name}
 
   - path: /etc/awslogs/awslogs.conf
     owner: root:root
@@ -221,7 +229,7 @@ write_files:
       datetime_format = %Y-%m-%d %H:%M:%S
       file = /opt/minecraft/${server_name}/ForgeModLoader-server-0.log
       buffer_duration = 5000
-      log_stream_name = {instance_id}_${server_name}
+      log_stream_name = ${server_name}_forge
       initial_position = start_of_file
       log_group_name = minecraft_${server_name}_logs
 

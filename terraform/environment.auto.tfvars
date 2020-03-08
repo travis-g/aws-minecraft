@@ -10,7 +10,9 @@ s3_bucket_name = "minecraft-btw"
 
 // instance_type = "t2.micro"
 // instance_type = "m3.large"
-instance_type = "t3.large"
+instance_type = "t3.medium"
+
+ram_allocation = 3
 
 use_elastic_ip = true
 
@@ -31,6 +33,6 @@ key_name = "minecraft-ssh"
 
 tag_project = "minecraft-cluster"
 
-server_name = "aws-primo"
+server_name = "welcome-back-to-hell"
 
 log_retention = 3
