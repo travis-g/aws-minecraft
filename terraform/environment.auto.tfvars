@@ -14,7 +14,7 @@ instance_type = "t3.medium"
 
 ram_allocation = 3
 
-use_elastic_ip = true
+use_elastic_ip = false
 
 spot_price = ""
 
@@ -33,6 +33,6 @@ key_name = "minecraft-ssh"
 
 tag_project = "minecraft-cluster"
 
-server_name = "welcome-back-to-hell"
+server_name = "btw-and-knuckles-ft-dante"
 
 log_retention = 3

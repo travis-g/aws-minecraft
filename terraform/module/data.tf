@@ -22,13 +22,11 @@ data "aws_ami" "minecraft" {
 
 # --- cloud-init config
 data "template_file" "minecraftd_init" {
-  template = "${file("${path.module}/templates/user_data.yaml")}"
-
-  vars {
-    region         = "${var.region}"
-    eip_alloc      = "${aws_eip.server_address.id}"
-    s3_bucket_name = "${var.s3_bucket_name}"
-    server_name    = "${var.server_name}"
-    ram_alloc      = "${var.ram_allocation}"
-  }
+  template = templatefile("${path.module}/templates/user_data.yaml", {
+    region         = var.region
+    eip_alloc      = aws_eip.server_address.id
+    s3_bucket_name = var.s3_bucket_name
+    server_name    = var.server_name
+    ram_alloc      = var.ram_allocation
+  })
 }

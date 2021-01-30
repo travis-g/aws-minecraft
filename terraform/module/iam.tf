@@ -2,7 +2,7 @@
 
 # -- Generic STS AssumeRole policy
 resource "aws_iam_role" "instance_iam_role" {
-  name = "${var.role_name}"
+  name = var.role_name
 
   assume_role_policy = <<EOF
 {
@@ -23,19 +23,19 @@ EOF
 
 resource "aws_iam_instance_profile" "s3_profile" {
   name = "${var.role_name}_s3_profile"
-  role = "${aws_iam_role.instance_iam_role.name}"
+  role = aws_iam_role.instance_iam_role.name
 }
 
 resource "aws_iam_policy" "s3_iam_policy" {
   name   = "${var.role_name}_s3_policy"
   path   = "/"
-  policy = "${data.aws_iam_policy_document.s3_policy_doc.json}"
+  policy = data.aws_iam_policy_document.s3_policy_doc.json
 }
 
 resource "aws_iam_policy_attachment" "bucket_policy_attachment" {
   name       = "bucket_policy_attachment"
-  roles      = ["${aws_iam_role.instance_iam_role.name}"]
-  policy_arn = "${aws_iam_policy.s3_iam_policy.arn}"
+  roles      = [aws_iam_role.instance_iam_role.name]
+  policy_arn = aws_iam_policy.s3_iam_policy.arn
 }
 
 data "aws_iam_policy_document" "s3_policy_doc" {
@@ -92,13 +92,13 @@ data "aws_iam_policy_document" "s3_policy_doc" {
 resource "aws_iam_policy" "cloudwatch_iam_policy" {
   name   = "${var.role_name}_cloudwatch_policy"
   path   = "/"
-  policy = "${data.aws_iam_policy_document.cloudwatch_policy_doc.json}"
+  policy = data.aws_iam_policy_document.cloudwatch_policy_doc.json
 }
 
 resource "aws_iam_policy_attachment" "cloudwatch_policy_attachment" {
   name       = "cloudwatch_policy_attachment"
-  roles      = ["${aws_iam_role.instance_iam_role.name}"]
-  policy_arn = "${aws_iam_policy.cloudwatch_iam_policy.arn}"
+  roles      = [aws_iam_role.instance_iam_role.name]
+  policy_arn = aws_iam_policy.cloudwatch_iam_policy.arn
 }
 
 data "aws_iam_policy_document" "cloudwatch_policy_doc" {

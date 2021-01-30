@@ -1,15 +1,15 @@
 provider "aws" {
-  region = "${var.region}"
+  region = var.region
 }
 
 # --- Elastic IP to use instead of an ELB's DNS address
 resource "aws_eip" "server_address" {
   vpc = true
 
-  tags {
-    "Project"   = "${var.project_name}"
-    "Component" = "${var.component_name}"
-    "Name"      = "${var.project_name}-${var.component_name}"
+  tags = {
+    Project   = var.project_name
+    Component = var.component_name
+    Name      = "${var.project_name}-${var.component_name}"
   }
 
   lifecycle {
@@ -21,10 +21,10 @@ resource "aws_eip" "server_address" {
 
 resource "aws_autoscaling_group" "server_cluster" {
   name                 = "${var.project_name}-${var.component_name}"
-  launch_configuration = "${aws_launch_configuration.lc.name}"
+  launch_configuration = aws_launch_configuration.lc.name
   default_cooldown     = 60
 
-  vpc_zone_identifier = ["${var.subnet_ids}"]
+  vpc_zone_identifier = var.subnet_ids
 
   desired_capacity = 1
   min_size         = 0
@@ -32,13 +32,13 @@ resource "aws_autoscaling_group" "server_cluster" {
 
   tag {
     key                 = "Project"
-    value               = "${var.project_name}"
+    value               = var.project_name
     propagate_at_launch = true
   }
 
   tag {
     key                 = "Component"
-    value               = "${var.component_name}"
+    value               = var.component_name
     propagate_at_launch = true
   }
 
@@ -55,12 +55,12 @@ resource "aws_autoscaling_group" "server_cluster" {
 
 resource "aws_launch_configuration" "lc" {
   name_prefix   = "${var.project_name}-${var.component_name}"
-  image_id      = "${data.aws_ami.minecraft.id}"
-  instance_type = "${var.instance_type}"
+  image_id      = data.aws_ami.minecraft.id
+  instance_type = var.instance_type
 
-  iam_instance_profile = "${aws_iam_instance_profile.s3_profile.name}"
+  iam_instance_profile = aws_iam_instance_profile.s3_profile.name
 
-  // spot_price = "${var.spot_price}"
+  // spot_price = var.spot_price
   enable_monitoring = false
 
   associate_public_ip_address = true
@@ -70,8 +70,8 @@ resource "aws_launch_configuration" "lc" {
     "sg-0d0507ed4257e1fb9",
   ]
 
-  key_name  = "${var.key_name}"
-  user_data = "${data.template_file.minecraftd_init.rendered}"
+  key_name  = var.key_name
+  user_data = data.template_file.minecraftd_init.rendered
 
   lifecycle {
     create_before_destroy = true
@@ -88,7 +88,7 @@ resource "aws_autoscaling_schedule" "nights_on" {
   min_size         = 0
   max_size         = 1
 
-  autoscaling_group_name = "${aws_autoscaling_group.server_cluster.name}"
+  autoscaling_group_name = aws_autoscaling_group.server_cluster.name
 }
 
 resource "aws_autoscaling_schedule" "weekdays_off" {
@@ -99,5 +99,5 @@ resource "aws_autoscaling_schedule" "weekdays_off" {
   min_size         = 0
   max_size         = 1
 
-  autoscaling_group_name = "${aws_autoscaling_group.server_cluster.name}"
+  autoscaling_group_name = aws_autoscaling_group.server_cluster.name
 }

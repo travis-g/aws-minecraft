@@ -9,12 +9,12 @@ variable "vpc_id" {
 }
 
 variable "subnet_ids" {
-  type        = "list"
+  type        = list(string)
   description = "Target subnets. Desired spot instance type must be available in the subnet's AZ"
 }
 
 variable "availability_zones" {
-  type        = "list"
+  type        = list(string)
   description = "Acceptable availability zones"
 
   default = [
