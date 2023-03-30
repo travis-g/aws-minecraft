@@ -73,6 +73,10 @@ resource "aws_launch_configuration" "lc" {
   key_name  = var.key_name
   user_data = data.template_file.minecraftd_init.rendered
 
+  root_block_device {
+    volume_size = "16"
+  }
+
   lifecycle {
     create_before_destroy = true
   }

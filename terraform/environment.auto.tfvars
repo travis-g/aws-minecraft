@@ -10,9 +10,12 @@ s3_bucket_name = "minecraft-btw"
 
 // instance_type = "t2.micro"
 // instance_type = "m3.large"
-instance_type = "t3.medium"
+# instance_type = "m5a.large" # 2CPU, 8GB
+instance_type = "m5a.xlarge" # 4CPU, 16GB
+# instance_type = "m5a.2xlarge"
+// instance_type = "t3.medium"
 
-ram_allocation = 3
+ram_allocation = 6
 
 use_elastic_ip = false
 
@@ -33,6 +36,6 @@ key_name = "minecraft-ssh"
 
 tag_project = "minecraft-cluster"
 
-server_name = "btw-and-knuckles-ft-dante"
+server_name = "wallcraft"
 
 log_retention = 3

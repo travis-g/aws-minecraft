@@ -4,7 +4,7 @@ output:
 # apt_update: true
 
 packages:
-  - java-1.8.0-openjdk-headless
+  - java-17-amazon-corretto-headless
   - jq
   - awslogs
   - p7zip
@@ -38,7 +38,7 @@ write_files:
 
       mc_start() {
         logger "Starting server..."
-        /bin/sh -c "/usr/bin/screen -DmS mc-$1 /usr/bin/java -server -Xms512M -Xmx${ram_alloc}G -XX:+UseG1GC -XX:+CMSIncrementalPacing -XX:+CMSClassUnloadingEnabled -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -jar $(ls -v | grep -i 'FTBServer*.jar\|server.*jar' | head -n1) nogui"
+        /bin/sh -c "/usr/bin/screen -DmS mc-$1 /usr/bin/java -server -Xms512M -Xmx${ram_alloc}G -XX:+UseG1GC -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -jar $(ls -v | grep -i 'forge.*jar\|FTBServer.*jar\|fabric.*jar\|server.*jar' | head -n1) nogui"
       }
 
       mc_reload() {
@@ -48,15 +48,15 @@ write_files:
 
       mc_stop() {
         logger "Stopping."
-        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTTING DOWN."\\015'
+        screen -p 0 -S mc-$1 -X eval 'stuff "say Server shutting down."\\015'
         screen -p 0 -S mc-$1 -X eval 'stuff "stop"\\015'
       }
 
       mc_backup() {
         logger "Sending 15 second warning..." &
-        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP STARTING IN 15 SECONDS."\\015'
+        screen -p 0 -S mc-$1 -X eval 'stuff "say Server backup starting in 15 seconds."\\015'
         sleep 15
-        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP STARTING. Server going read-only..."\\015'
+        screen -p 0 -S mc-$1 -X eval 'stuff "say Server backup starting. Server going read-only..."\\015'
 
         mc_saveoff $1
         mc_save $1
@@ -64,8 +64,10 @@ write_files:
         # --- Archive target server backup
         mc_archive $1
 
-        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER BACKUP COMPLETE. Server going read-write."\\015'
+        screen -p 0 -S mc-$1 -X eval 'stuff "say Server backup saved. Server going read-write."\\015'
         mc_saveon $1
+
+        mc_export $1
       }
 
       mc_update() {
@@ -82,7 +84,7 @@ write_files:
         sleep 10 # Sync wait to stop
         sync
         logger "Saved."
-        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SAVED TO DISK."\\015'
+        screen -p 0 -S mc-$1 -X eval 'stuff "say Server saved to disk."\\015'
       }
 
       mc_saveoff() {
@@ -98,11 +100,13 @@ write_files:
       mc_archive() {
         logger "Archiving..."
         tar -C /opt/minecraft -czvf /opt/minecraft/backups/$1.tgz $1/world
+      }
 
+      mc_export() {
         logger "Exporting..."
-        screen -p 0 -S mc-$1 -X eval 'stuff "say EXPORTING BACKUP TO S3..."\\015'
+        screen -p 0 -S mc-$1 -X eval 'stuff "say Exporting backup to S3..."\\015'
         aws s3 cp /opt/minecraft/backups/$1.tgz s3://minecraft-btw/backups/$1.tgz
-        screen -p 0 -S mc-$1 -X eval 'stuff "say BACKUP EXPORTED TO S3."\\015'
+        screen -p 0 -S mc-$1 -X eval 'stuff "say Backup exported to S3."\\015'
       }
 
       mc_status() {
@@ -116,17 +120,18 @@ write_files:
       # --- Full shutdown process, including archiving
       mc_shutdown() {
         logger "Sending 15 second warning..." &
-        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTDOWN STARTING IN 15 SECONDS."\\015'
+        screen -p 0 -S mc-$1 -X eval 'stuff "say Server shutdown starting in 15 seconds."\\015'
         sleep 15
-        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTDOWN STARTING. Server going read-only..."\\015'
+        screen -p 0 -S mc-$1 -X eval 'stuff "say Server shutdown starting. Server going read-only..."\\015'
 
         mc_saveoff $1
         mc_save $1
 
         # --- Archive/export target server backup
         mc_archive $1
+        mc_export $1
 
-        screen -p 0 -S mc-$1 -X eval 'stuff "say SERVER SHUTTING DOWN IN 5 SECONDS."\\015'
+        screen -p 0 -S mc-$1 -X eval 'stuff "say Server shutting down in 5 seconds."\\015'
         sleep 5
         mc_stop $1
       }
@@ -154,6 +159,9 @@ write_files:
         archive)
           mc_archive $2
           ;;
+        export)
+          mc_export $2
+          ;;
         update)
           mc_backup $2
           mc_stop $2
@@ -167,7 +175,7 @@ write_files:
           mc_list $2
           ;;
         *)
-          echo "Usage: $0 (start|stop|restart|reload|shutdown|backup|archive|list) <server>"
+          echo "Usage: $0 (start|stop|restart|reload|shutdown|backup|archive|export|list) <server>"
           echo "       $0 update <server> <url-to-jar>"
           exit 1
         ;;
@@ -207,6 +215,7 @@ write_files:
 
       Restart=on-failure
       RestartSec=60s
+      TimeoutStopSec=300s
 
       [Install]
       WantedBy=multi-user.target
@@ -215,7 +224,7 @@ write_files:
     owner: root:root
     permissions: '0644'
     content: |
-      0 */4 * * * ec2-user /opt/scripts/minecraftd backup ${server_name}
+      0 */2 * * * ec2-user /opt/scripts/minecraftd backup ${server_name}
       */5 * * * * ec2-user /opt/scripts/minecraftd list ${server_name}
 
   - path: /etc/awslogs/awslogs.conf
@@ -227,9 +236,9 @@ write_files:
 
       [forge_server]
       datetime_format = %Y-%m-%d %H:%M:%S
-      file = /opt/minecraft/${server_name}/ForgeModLoader-server-0.log
+      file = /opt/minecraft/${server_name}/logs/latest.log
       buffer_duration = 5000
-      log_stream_name = ${server_name}_forge
+      log_stream_name = ${server_name}_latest
       initial_position = start_of_file
       log_group_name = minecraft_${server_name}_logs
 
@@ -241,7 +250,7 @@ runcmd:
   - mkdir -p /opt/scripts
   - mkdir -p /opt/minecraft/backups
   - amazon-linux-extras install -y epel
-  - yum install -y p7zip
+  - yum install -y p7zip java-17-amazon-corretto-headless
   - aws s3 cp s3://${s3_bucket_name}/servers/${server_name}.7z /opt/minecraft
   - 7za x /opt/minecraft/${server_name}.7z -o/opt/minecraft
   - aws s3 cp s3://${s3_bucket_name}/backups/${server_name}.tgz /opt/minecraft
