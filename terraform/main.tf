@@ -31,9 +31,8 @@ module "minecraft_btw" {
   server_name    = var.server_name
   s3_bucket_name = var.s3_bucket_name
   ram_allocation = var.ram_allocation
+  use_run_script = var.use_run_script
 
-  use_spot_instances = var.use_spot_instances
-  spot_price         = var.spot_price
   scale_down         = var.scale_down
   log_retention      = var.log_retention
 

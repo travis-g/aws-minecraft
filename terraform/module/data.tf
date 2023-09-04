@@ -28,5 +28,6 @@ data "template_file" "minecraftd_init" {
     s3_bucket_name = var.s3_bucket_name
     server_name    = var.server_name
     ram_alloc      = var.ram_allocation
+    use_run_script = var.use_run_script
   })
 }

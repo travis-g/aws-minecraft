@@ -11,17 +11,6 @@ packages:
 
 # --- Chown these files later: https://serverfault.com/questions/752027/cloud-init-module-order-is-wrong-how-to-fix
 write_files:
-  - path: /etc/systemd/system/terminationd.service
-    permissions: '0750'
-    content: |
-      [Unit]
-      Description=Spot Instance Termination Early Warning
-      After=network.target
-
-      [Service]
-      ExecStart=/usr/sbin/terminationd
-      StandardOutput=syslog
-      StandardError=syslog
   - path: /opt/scripts/minecraftd
     permissions: '0777'
     content: |
@@ -38,7 +27,7 @@ write_files:
 
       mc_start() {
         logger "Starting server..."
-        /bin/sh -c "/usr/bin/screen -DmS mc-$1 /usr/bin/java -server -Xms512M -Xmx${ram_alloc}G -XX:+UseG1GC -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -jar $(ls -v | grep -i 'forge.*jar\|FTBServer.*jar\|fabric.*jar\|server.*jar' | head -n1) nogui"
+        /bin/sh -c "/usr/bin/screen -DmS mc-$1 /usr/bin/java -server -Xms512M -Xmx${ram_alloc}G -XX:+UseG1GC -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 %{if use_run_script}@$(find . -name unix_args.txt -printf '%P' | head -n1)%{else}-jar $(ls -v | grep -i 'forge.*jar\|FTBServer.*jar\|fabric.*jar\|server.*jar' | head -n1)%{endif} nogui"
       }
 
       mc_reload() {
@@ -190,8 +179,6 @@ write_files:
       Description=Minecraft Server %i
       After=network.target
       Requires=network.target
-      # Bind to termination warning service in case we're on a Spot instance
-      BindsTo=terminationd.service
 
       [Service]
       WorkingDirectory=/opt/minecraft/%i
@@ -244,8 +231,6 @@ write_files:
 
 runcmd:
   - aws ec2 associate-address --instance-id `curl -s http://169.254.169.254/latest/meta-data/instance-id` --allocation-id ${eip_alloc} --allow-reassociation --region=${region}
-  - curl -L "https://github.com/travis-g/terminationd/releases/download/v0.0.1/terminationd_0.0.1_linux_amd64.zip" | gunzip > /usr/sbin/terminationd && chmod +x /usr/sbin/terminationd
-  - systemctl enable terminationd.service --now
   - systemctl enable awslogsd --now
   - mkdir -p /opt/scripts
   - mkdir -p /opt/minecraft/backups

@@ -17,10 +17,6 @@ instance_type = "m5a.xlarge" # 4CPU, 16GB
 
 ram_allocation = 6
 
-use_elastic_ip = false
-
-spot_price = ""
-
 scale_down = true
 
 role_name = "minecraft-server"
@@ -34,8 +30,7 @@ subnet_ids = [
 
 key_name = "minecraft-ssh"
 
-tag_project = "minecraft-cluster"
-
-server_name = "wallcraft"
+server_name    = "craft-of-valkyries"
+use_run_script = true
 
 log_retention = 3

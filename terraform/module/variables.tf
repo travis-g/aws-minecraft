@@ -53,15 +53,6 @@ variable "ram_allocation" {
   default     = 3
 }
 
-variable "use_spot_instances" {
-  description = "Option to use Spot instances"
-  default     = false
-}
-
-variable "spot_price" {
-  description = "Maximum bid for spot instances"
-}
-
 variable "manual_scale_up" {
   description = "Boolean to scale the cluster manually by setting desired instance count"
   default     = false
@@ -82,6 +73,12 @@ variable "key_name" {
 
 variable "server_name" {
   description = "Friendly name of the server to use when storing state"
+}
+
+variable "use_run_script" {
+  description = "Use the run.sh script provided by the Forge installer"
+  type        = bool
+  default     = false
 }
 
 # -- CloudWatch Variables
